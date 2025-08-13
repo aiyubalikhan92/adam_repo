@@ -1,0 +1,34 @@
+pipeline {
+    agent any
+
+    environment {
+        EC2_HOST = "3.123.45.67"   // EC2 Public IP
+        EC2_USER = "ec2-user"
+        SSH_KEY_ID = "ec2-key"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/your-username/sample-project.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshagent (credentials: ["${SSH_KEY_ID}"]) {
+                    sh """
+                        scp -o StrictHostKeyChecking=no -r * ${EC2_USER}@${EC2_HOST}:/home/${EC2_USER}/app
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "cd /home/${EC2_USER}/app && npm install && pm2 restart app.js || pm2 start app.js"
+                    """
+                }
+            }
+        }
+    }
+}
